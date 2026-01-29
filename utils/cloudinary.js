@@ -3,9 +3,9 @@ const cloudinary = require('cloudinary').v2;
 
 // Configure Cloudinary
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 /**
@@ -16,24 +16,24 @@ cloudinary.config({
  * @returns {Promise<string>} - Cloudinary secure URL
  */
 async function uploadImage(base64Data, folder = 'talenttrack/screenshots', publicId = null) {
-  try {
-    const options = {
-      folder,
-      resource_type: 'image',
-      format: 'jpg',
-      quality: 'auto:good'
-    };
+    try {
+        const options = {
+            folder,
+            resource_type: 'image',
+            format: 'jpg',
+            quality: 'auto:good'
+        };
 
-    if (publicId) {
-      options.public_id = publicId;
+        if (publicId) {
+            options.public_id = publicId;
+        }
+
+        const result = await cloudinary.uploader.upload(base64Data, options);
+        return result.secure_url;
+    } catch (error) {
+        console.error('Cloudinary image upload error:', error);
+        throw error;
     }
-
-    const result = await cloudinary.uploader.upload(base64Data, options);
-    return result.secure_url;
-  } catch (error) {
-    console.error('Cloudinary image upload error:', error);
-    throw error;
-  }
 }
 
 /**
@@ -44,23 +44,23 @@ async function uploadImage(base64Data, folder = 'talenttrack/screenshots', publi
  * @returns {Promise<string>} - Cloudinary secure URL
  */
 async function uploadPDF(base64Data, folder = 'talenttrack/reports', publicId = null) {
-  try {
-    const options = {
-      folder,
-      resource_type: 'raw',
-      format: 'pdf'
-    };
+    try {
+        const options = {
+            folder,
+            resource_type: 'auto', // Changed from 'raw' to 'auto' to avoid untrusted account issues
+            format: 'pdf'
+        };
 
-    if (publicId) {
-      options.public_id = publicId;
+        if (publicId) {
+            options.public_id = publicId;
+        }
+
+        const result = await cloudinary.uploader.upload(base64Data, options);
+        return result.secure_url;
+    } catch (error) {
+        console.error('Cloudinary PDF upload error:', error);
+        throw error;
     }
-
-    const result = await cloudinary.uploader.upload(base64Data, options);
-    return result.secure_url;
-  } catch (error) {
-    console.error('Cloudinary PDF upload error:', error);
-    throw error;
-  }
 }
 
 /**
@@ -71,23 +71,23 @@ async function uploadPDF(base64Data, folder = 'talenttrack/reports', publicId = 
  * @returns {Promise<string>} - Cloudinary secure URL
  */
 async function uploadVideo(base64Data, folder = 'talenttrack/videos', publicId = null) {
-  try {
-    const options = {
-      folder,
-      resource_type: 'video',
-      format: 'webm'
-    };
+    try {
+        const options = {
+            folder,
+            resource_type: 'video',
+            format: 'webm'
+        };
 
-    if (publicId) {
-      options.public_id = publicId;
+        if (publicId) {
+            options.public_id = publicId;
+        }
+
+        const result = await cloudinary.uploader.upload(base64Data, options);
+        return result.secure_url;
+    } catch (error) {
+        console.error('Cloudinary video upload error:', error);
+        throw error;
     }
-
-    const result = await cloudinary.uploader.upload(base64Data, options);
-    return result.secure_url;
-  } catch (error) {
-    console.error('Cloudinary video upload error:', error);
-    throw error;
-  }
 }
 
 /**
@@ -97,19 +97,19 @@ async function uploadVideo(base64Data, folder = 'talenttrack/videos', publicId =
  * @returns {Promise<object>} - Deletion result
  */
 async function deleteFile(publicId, resourceType = 'image') {
-  try {
-    const result = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
-    return result;
-  } catch (error) {
-    console.error('Cloudinary delete error:', error);
-    throw error;
-  }
+    try {
+        const result = await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+        return result;
+    } catch (error) {
+        console.error('Cloudinary delete error:', error);
+        throw error;
+    }
 }
 
 module.exports = {
-  uploadImage,
-  uploadPDF,
-  uploadVideo,
-  deleteFile,
-  cloudinary
+    uploadImage,
+    uploadPDF,
+    uploadVideo,
+    deleteFile,
+    cloudinary
 };
