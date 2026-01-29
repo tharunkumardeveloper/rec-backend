@@ -11,6 +11,7 @@ router.post("/add", async (req, res) => {
     const { sessionMeta, repImages } = req.body;
 
     console.log('💾 Saving workout session:', sessionMeta.athleteName, sessionMeta.activityName);
+    console.log(`📦 Payload size - PDF: ${sessionMeta.pdfDataUrl ? (sessionMeta.pdfDataUrl.length / 1024 / 1024).toFixed(2) : 0}MB, Video: ${sessionMeta.videoDataUrl ? (sessionMeta.videoDataUrl.length / 1024 / 1024).toFixed(2) : 0}MB, Screenshots: ${repImages?.length || 0}`);
 
     // Upload PDF to Cloudinary if provided
     let pdfUrl = null;
@@ -19,7 +20,7 @@ router.post("/add", async (req, res) => {
       try {
         const publicId = `${sessionMeta.athleteName}_${sessionMeta.activityName}_${Date.now()}`;
         pdfUrl = await uploadPDF(sessionMeta.pdfDataUrl, 'talenttrack/reports', publicId);
-        console.log('✅ PDF uploaded:', pdfUrl);
+        console.log('✅ PDF uploaded successfully:', pdfUrl);
       } catch (error) {
         console.warn('⚠️ PDF upload failed, storing base64:', error.message);
         pdfUrl = sessionMeta.pdfDataUrl; // Fallback to base64
@@ -33,7 +34,7 @@ router.post("/add", async (req, res) => {
       try {
         const publicId = `${sessionMeta.athleteName}_${sessionMeta.activityName}_video_${Date.now()}`;
         videoUrl = await uploadVideo(sessionMeta.videoDataUrl, 'talenttrack/videos', publicId);
-        console.log('✅ Video uploaded:', videoUrl);
+        console.log('✅ Video uploaded successfully:', videoUrl);
       } catch (error) {
         console.warn('⚠️ Video upload failed, storing base64:', error.message);
         videoUrl = sessionMeta.videoDataUrl; // Fallback to base64
@@ -62,6 +63,7 @@ router.post("/add", async (req, res) => {
           try {
             const publicId = `${sessionMeta.athleteName}_${sessionMeta.activityName}_rep${rep.repNumber}_${Date.now()}`;
             const imageUrl = await uploadImage(rep.imageData, 'talenttrack/screenshots', publicId);
+            console.log(`✅ Rep ${rep.repNumber} uploaded: ${imageUrl.substring(0, 50)}...`);
             
             return {
               ...rep,
@@ -81,7 +83,7 @@ router.post("/add", async (req, res) => {
       );
 
       await db.collection("rep_images").insertMany(repsWithUrls);
-      console.log(`✅ Saved ${repImages.length} rep images`);
+      console.log(`✅ Saved ${repImages.length} rep images to MongoDB`);
     }
 
     res.status(200).json({
