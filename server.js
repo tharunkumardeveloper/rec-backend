@@ -638,7 +638,10 @@ function createMockLiveResults(activityName, outputDir) {
 // MONGODB WORKOUT STORAGE ROUTES
 // ============================================
 const sessionsRouter = require('./routes/sessions');
+const dbUtilsRouter = require('./db-utils');
+
 app.use('/api/sessions', sessionsRouter);
+app.use('/api/db', dbUtilsRouter);
 
 // Legacy endpoint for backward compatibility
 app.post('/api/save-workout', async (req, res) => {

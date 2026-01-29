@@ -4,8 +4,13 @@
   "description": "Backend service for processing workout videos using Python scripts",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node migrate-and-start.js",
+    "dev": "nodemon server.js",
+    "server": "node server.js",
+    "db:setup": "node mongodb-schema.js",
+    "db:migrate": "node migrate-data.js",
+    "db:clean": "node migrate-data.js --clean",
+    "test:db": "node test-mongodb.js"
   },
   "dependencies": {
     "child_process": "^1.0.2",
