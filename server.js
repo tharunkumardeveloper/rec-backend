@@ -640,6 +640,29 @@ function createMockLiveResults(activityName, outputDir) {
 const sessionsRouter = require('./routes/sessions');
 const dbUtilsRouter = require('./db-utils');
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'TalentTrack Backend API',
+    status: 'running',
+    endpoints: {
+      health: '/api/health',
+      sessions: '/api/sessions/*',
+      database: '/api/db/*'
+    }
+  });
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    message: 'Server is running',
+    port: PORT,
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/db', dbUtilsRouter);
 
@@ -650,13 +673,29 @@ app.post('/api/save-workout', async (req, res) => {
   sessionsRouter(req, res);
 });
 
-app.listen(PORT, async () => {
-  console.log(`Workout processor server running on port ${PORT}`);
-
-  // Connect to MongoDB
+// Connect to MongoDB and start server
+async function startServer() {
   try {
+    // Connect to MongoDB first
+    console.log('🔄 Connecting to MongoDB...');
     await connectDB();
+    console.log('✅ MongoDB connected successfully');
+
+    // Then start the server
+    app.listen(PORT, () => {
+      console.log(`✅ Workout processor server running on port ${PORT}`);
+      console.log(`📡 API endpoints available at http://localhost:${PORT}/api`);
+    });
   } catch (error) {
-    console.error('Failed to connect to MongoDB, continuing without database:', error.message);
+    console.error('❌ Failed to connect to MongoDB:', error.message);
+    console.log('⚠️  Starting server without database connection...');
+    
+    // Start server anyway (will use localStorage fallback)
+    app.listen(PORT, () => {
+      console.log(`⚠️  Server running on port ${PORT} (MongoDB unavailable)`);
+    });
   }
-});
+}
+
+// Start the server
+startServer();
