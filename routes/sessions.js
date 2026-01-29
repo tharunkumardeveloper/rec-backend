@@ -117,7 +117,7 @@ router.get("/athlete/:athleteName", async (req, res) => {
       .sort({ timestamp: -1 })
       .toArray();
 
-    console.log(`✅ Found ${workouts.length} workouts`);
+    console.log(`✅ Found ${workouts.length} workouts for ${athleteName}`);
 
     res.status(200).json({
       success: true,
@@ -130,7 +130,8 @@ router.get("/athlete/:athleteName", async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Error fetching workouts',
-      details: err.message
+      details: err.message,
+      workouts: [] // Return empty array on error
     });
   }
 });

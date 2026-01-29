@@ -21,7 +21,9 @@ async function uploadImage(base64Data, folder = 'talenttrack/screenshots', publi
             folder,
             resource_type: 'image',
             format: 'jpg',
-            quality: 'auto:good'
+            quality: 'auto:good',
+            access_mode: 'public', // Make publicly accessible
+            type: 'upload'
         };
 
         if (publicId) {
@@ -48,7 +50,9 @@ async function uploadPDF(base64Data, folder = 'talenttrack/reports', publicId = 
         const options = {
             folder,
             resource_type: 'auto', // Changed from 'raw' to 'auto' to avoid untrusted account issues
-            format: 'pdf'
+            format: 'pdf',
+            access_mode: 'public', // Make publicly accessible
+            type: 'upload'
         };
 
         if (publicId) {
@@ -75,7 +79,9 @@ async function uploadVideo(base64Data, folder = 'talenttrack/videos', publicId =
         const options = {
             folder,
             resource_type: 'video',
-            format: 'webm'
+            format: 'webm',
+            access_mode: 'public', // Make publicly accessible
+            type: 'upload'
         };
 
         if (publicId) {
