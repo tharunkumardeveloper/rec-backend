@@ -47,22 +47,35 @@ async function uploadImage(base64Data, folder = 'talenttrack/screenshots', publi
  */
 async function uploadPDF(base64Data, folder = 'talenttrack/reports', publicId = null) {
     try {
+        // Ensure the base64 data has the correct PDF mime type
+        let pdfData = base64Data;
+        if (!pdfData.startsWith('data:application/pdf')) {
+            // If it's just base64 without mime type, add it
+            if (pdfData.startsWith('data:')) {
+                pdfData = pdfData.replace(/^data:[^;]+/, 'data:application/pdf');
+            } else {
+                pdfData = `data:application/pdf;base64,${pdfData}`;
+            }
+        }
+
         const options = {
             folder,
-            resource_type: 'auto', // Changed from 'raw' to 'auto' to avoid untrusted account issues
-            format: 'pdf',
-            access_mode: 'public', // Make publicly accessible
-            type: 'upload'
+            resource_type: 'raw', // Use 'raw' for PDFs - more reliable than 'auto'
+            access_mode: 'public',
+            type: 'upload',
+            format: 'pdf' // Explicitly set format
         };
 
         if (publicId) {
             options.public_id = publicId;
         }
 
-        const result = await cloudinary.uploader.upload(base64Data, options);
+        const result = await cloudinary.uploader.upload(pdfData, options);
+        console.log('✅ PDF uploaded to Cloudinary:', result.secure_url);
+        console.log('📄 PDF resource type:', result.resource_type);
         return result.secure_url;
     } catch (error) {
-        console.error('Cloudinary PDF upload error:', error);
+        console.error('❌ Cloudinary PDF upload error:', error);
         throw error;
     }
 }

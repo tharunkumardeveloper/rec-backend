@@ -127,9 +127,9 @@ async function setupDatabase() {
     }
 
     // Create indexes for rep_images
-    await db.collection('rep_images').createIndex({ sessionId: 1, repNumber: 1 });
+    await db.collection('rep_images').createIndex({ sessionId: 1, repNumber: 1 }, { unique: true });
     await db.collection('rep_images').createIndex({ sessionId: 1 });
-    console.log('✅ Rep_images indexes created');
+    console.log('✅ Rep_images indexes created (with unique constraint on sessionId + repNumber)');
 
     // ============================================
     // 4. DISPLAY CURRENT STATS

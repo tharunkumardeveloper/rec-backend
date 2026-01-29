@@ -639,6 +639,7 @@ function createMockLiveResults(activityName, outputDir) {
 // MONGODB WORKOUT STORAGE ROUTES
 // ============================================
 const sessionsRouter = require('./routes/sessions');
+const usersRouter = require('./routes/users');
 const dbUtilsRouter = require('./db-utils');
 
 // Root endpoint
@@ -649,6 +650,7 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/api/health',
       sessions: '/api/sessions/*',
+      users: '/api/users/*',
       database: '/api/db/*'
     }
   });
@@ -665,6 +667,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/sessions', sessionsRouter);
+app.use('/api/users', usersRouter);
 app.use('/api/db', dbUtilsRouter);
 
 // Legacy endpoint for backward compatibility

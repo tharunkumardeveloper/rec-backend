@@ -17,6 +17,7 @@ async function connectDB() {
     // Create indexes for better query performance
     await db.collection("workout_sessions").createIndex({ athleteName: 1, timestamp: -1 });
     await db.collection("rep_images").createIndex({ sessionId: 1 });
+    await db.collection("rep_images").createIndex({ sessionId: 1, repNumber: 1 }, { unique: true });
     
     console.log("✅ Database indexes created");
   } catch (err) {

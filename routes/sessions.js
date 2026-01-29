@@ -18,7 +18,7 @@ router.post("/add", async (req, res) => {
     if (sessionMeta.pdfDataUrl) {
       console.log('📄 Uploading PDF to Cloudinary...');
       try {
-        const publicId = `${sessionMeta.athleteName}_${sessionMeta.activityName}_${Date.now()}`;
+        const publicId = `${sessionMeta.athleteName.replace(/\s+/g, '_')}_${sessionMeta.activityName.replace(/\s+/g, '_')}_${Date.now()}`;
         pdfUrl = await uploadPDF(sessionMeta.pdfDataUrl, 'talenttrack/reports', publicId);
         console.log('✅ PDF uploaded successfully:', pdfUrl);
       } catch (error) {
@@ -32,7 +32,7 @@ router.post("/add", async (req, res) => {
     if (sessionMeta.videoDataUrl) {
       console.log('🎥 Uploading video to Cloudinary...');
       try {
-        const publicId = `${sessionMeta.athleteName}_${sessionMeta.activityName}_video_${Date.now()}`;
+        const publicId = `${sessionMeta.athleteName.replace(/\s+/g, '_')}_${sessionMeta.activityName.replace(/\s+/g, '_')}_video_${Date.now()}`;
         videoUrl = await uploadVideo(sessionMeta.videoDataUrl, 'talenttrack/videos', publicId);
         console.log('✅ Video uploaded successfully:', videoUrl);
       } catch (error) {
@@ -54,36 +54,56 @@ router.post("/add", async (req, res) => {
 
     console.log('✅ Session saved with ID:', sessionResult.insertedId);
 
-    // Upload rep images to Cloudinary
+    // Upload rep images to Cloudinary with duplicate prevention
     if (repImages && repImages.length > 0) {
       console.log(`📸 Uploading ${repImages.length} rep images to Cloudinary...`);
       
+      // Remove any existing rep images for this session (cleanup)
+      await db.collection("rep_images").deleteMany({ 
+        sessionId: sessionResult.insertedId.toString() 
+      });
+      
       const repsWithUrls = await Promise.all(
-        repImages.map(async (rep, index) => {
+        repImages.map(async (rep) => {
           try {
-            const publicId = `${sessionMeta.athleteName}_${sessionMeta.activityName}_rep${rep.repNumber}_${Date.now()}`;
+            const publicId = `${sessionMeta.athleteName.replace(/\s+/g, '_')}_${sessionMeta.activityName.replace(/\s+/g, '_')}_rep${rep.repNumber}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
             const imageUrl = await uploadImage(rep.imageData, 'talenttrack/screenshots', publicId);
             console.log(`✅ Rep ${rep.repNumber} uploaded: ${imageUrl.substring(0, 50)}...`);
             
             return {
-              ...rep,
+              repNumber: rep.repNumber,
               imageUrl,
-              imageData: undefined, // Remove base64
-              sessionId: sessionResult.insertedId.toString()
+              correct: rep.correct,
+              details: rep.details || {},
+              sessionId: sessionResult.insertedId.toString(),
+              createdAt: new Date()
             };
           } catch (error) {
             console.warn(`⚠️ Rep ${rep.repNumber} upload failed, storing base64:`, error.message);
             return {
-              ...rep,
+              repNumber: rep.repNumber,
               imageUrl: rep.imageData, // Fallback to base64
-              sessionId: sessionResult.insertedId.toString()
+              correct: rep.correct,
+              details: rep.details || {},
+              sessionId: sessionResult.insertedId.toString(),
+              createdAt: new Date()
             };
           }
         })
       );
 
-      await db.collection("rep_images").insertMany(repsWithUrls);
-      console.log(`✅ Saved ${repImages.length} rep images to MongoDB`);
+      // Use insertMany with ordered: false to continue on duplicates
+      try {
+        await db.collection("rep_images").insertMany(repsWithUrls, { ordered: false });
+        console.log(`✅ Saved ${repImages.length} rep images to MongoDB`);
+      } catch (error) {
+        // Handle duplicate key errors gracefully
+        if (error.code === 11000) {
+          console.warn('⚠️ Some duplicate rep images were skipped');
+        } else {
+          throw error;
+        }
+      }
     }
 
     res.status(200).json({
@@ -119,10 +139,35 @@ router.get("/athlete/:athleteName", async (req, res) => {
 
     console.log(`✅ Found ${workouts.length} workouts for ${athleteName}`);
 
+    // Fetch rep images for each workout
+    const workoutsWithReps = await Promise.all(
+      workouts.map(async (workout) => {
+        const reps = await db.collection("rep_images")
+          .find({ sessionId: workout._id.toString() })
+          .sort({ repNumber: 1 })
+          .toArray();
+        
+        console.log(`📸 Found ${reps.length} rep images for workout ${workout._id}`);
+        if (reps.length > 0) {
+          console.log(`   First rep URL: ${reps[0].imageUrl?.substring(0, 60)}...`);
+        }
+        
+        return {
+          ...workout,
+          screenshots: reps.map(rep => rep.imageUrl),
+          repDetails: reps.map(rep => ({
+            rep: rep.repNumber,
+            correct: rep.correct,
+            ...rep.details
+          }))
+        };
+      })
+    );
+
     res.status(200).json({
       success: true,
-      workouts,
-      count: workouts.length
+      workouts: workoutsWithReps,
+      count: workoutsWithReps.length
     });
 
   } catch (err) {
