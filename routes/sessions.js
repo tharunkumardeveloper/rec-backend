@@ -66,7 +66,7 @@ router.post("/add", async (req, res) => {
       const repsWithUrls = await Promise.all(
         repImages.map(async (rep) => {
           try {
-            const publicId = `${sessionMeta.athleteName.replace(/\s+/g, '_')}_${sessionMeta.activityName.replace(/\s+/g, '_')}_rep${rep.repNumber}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+            const publicId = `${sessionMeta.athleteName.replace(/\s+/g, '_')}_${sessionMeta.activityName.replace(/\s+/g, '_')}_rep${rep.repNumber}_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
             const imageUrl = await uploadImage(rep.imageData, 'talenttrack/screenshots', publicId);
             console.log(`✅ Rep ${rep.repNumber} uploaded: ${imageUrl.substring(0, 50)}...`);
             
@@ -260,7 +260,7 @@ router.get("/:sessionId/reps", async (req, res) => {
   }
 });
 
-// DELETE /api/sessions/:sessionId - Delete a workout session
+// DELETE /api/sessions/:sessionId - Delete workout session and all related data
 router.delete("/:sessionId", async (req, res) => {
   try {
     const db = getDB();
@@ -268,24 +268,45 @@ router.delete("/:sessionId", async (req, res) => {
 
     console.log('🗑️ Deleting workout session:', sessionId);
 
-    // Delete rep images first
-    await db.collection("rep_images").deleteMany({ sessionId });
+    // Validate sessionId
+    if (!ObjectId.isValid(sessionId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid session ID'
+      });
+    }
 
-    // Delete session
-    await db.collection("workout_sessions").deleteOne({ _id: new ObjectId(sessionId) });
+    // Delete rep images associated with this session
+    const repImagesResult = await db.collection("rep_images").deleteMany({
+      sessionId: sessionId
+    });
+    console.log(`✅ Deleted ${repImagesResult.deletedCount} rep images`);
 
-    console.log('✅ Workout deleted');
+    // Delete the workout session
+    const sessionResult = await db.collection("workout_sessions").deleteOne({
+      _id: new ObjectId(sessionId)
+    });
+
+    if (sessionResult.deletedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workout session not found'
+      });
+    }
+
+    console.log('✅ Workout session deleted successfully');
 
     res.status(200).json({
       success: true,
-      message: 'Workout deleted successfully'
+      message: 'Workout session deleted successfully',
+      deletedRepImages: repImagesResult.deletedCount
     });
 
   } catch (err) {
-    console.error('❌ Error deleting workout:', err);
+    console.error('❌ Error deleting workout session:', err);
     res.status(500).json({
       success: false,
-      error: 'Error deleting workout',
+      error: 'Error deleting workout session',
       details: err.message
     });
   }
