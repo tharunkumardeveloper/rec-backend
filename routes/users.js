@@ -59,6 +59,63 @@ router.post("/profile", async (req, res) => {
   }
 });
 
+// PATCH /api/users/profile/:userId - Update specific profile fields
+router.patch("/profile/:userId", async (req, res) => {
+  try {
+    const db = getDB();
+    const { userId } = req.params;
+    const updates = req.body;
+
+    console.log('🔄 Updating profile fields for:', userId);
+
+    // Upload profile picture to Cloudinary if it's base64
+    if (updates.profilePic && updates.profilePic.startsWith('data:image')) {
+      console.log('📸 Uploading new profile picture to Cloudinary...');
+      try {
+        const publicId = `${userId}_profile_${Date.now()}`;
+        updates.profilePic = await uploadImage(updates.profilePic, 'talenttrack/profiles', publicId);
+        console.log('✅ Profile picture uploaded:', updates.profilePic);
+      } catch (error) {
+        console.warn('⚠️ Profile picture upload failed:', error.message);
+      }
+    }
+
+    // Update only the provided fields
+    const result = await db.collection("users").updateOne(
+      { userId },
+      {
+        $set: {
+          ...updates,
+          updatedAt: new Date()
+        }
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Profile not found'
+      });
+    }
+
+    console.log('✅ Profile updated:', userId);
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      userId
+    });
+
+  } catch (err) {
+    console.error('❌ Error updating profile:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Error updating profile',
+      details: err.message
+    });
+  }
+});
+
 // GET /api/users/profile/:userId - Get user profile
 router.get("/profile/:userId", async (req, res) => {
   try {

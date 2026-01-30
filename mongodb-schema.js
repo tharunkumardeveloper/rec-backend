@@ -44,11 +44,19 @@ async function setupDatabase() {
       console.log('✅ Users collection created');
     }
 
-    // Create indexes for users
-    await db.collection('users').createIndex({ userId: 1 }, { unique: true });
-    await db.collection('users').createIndex({ role: 1 });
-    await db.collection('users').createIndex({ district: 1 });
-    console.log('✅ Users indexes created');
+    // Create indexes for users (production-safe)
+    try {
+      await db.collection('users').createIndex({ userId: 1 }, { unique: true, background: true });
+      await db.collection('users').createIndex({ role: 1 }, { background: true });
+      await db.collection('users').createIndex({ district: 1 }, { background: true });
+      console.log('✅ Users indexes created');
+    } catch (indexErr) {
+      if (!indexErr.message.includes('already exists')) {
+        console.warn('⚠️ Users index warning:', indexErr.message);
+      } else {
+        console.log('✅ Users indexes already exist');
+      }
+    }
 
     // ============================================
     // 2. WORKOUT_SESSIONS COLLECTION
@@ -84,13 +92,21 @@ async function setupDatabase() {
       console.log('✅ Workout_sessions collection created');
     }
 
-    // Create indexes for workout_sessions
-    await db.collection('workout_sessions').createIndex({ athleteName: 1, timestamp: -1 });
-    await db.collection('workout_sessions').createIndex({ athleteId: 1, timestamp: -1 });
-    await db.collection('workout_sessions').createIndex({ activityName: 1 });
-    await db.collection('workout_sessions').createIndex({ timestamp: -1 });
-    await db.collection('workout_sessions').createIndex({ createdAt: -1 });
-    console.log('✅ Workout_sessions indexes created');
+    // Create indexes for workout_sessions (production-safe)
+    try {
+      await db.collection('workout_sessions').createIndex({ athleteName: 1, timestamp: -1 }, { background: true });
+      await db.collection('workout_sessions').createIndex({ athleteId: 1, timestamp: -1 }, { background: true });
+      await db.collection('workout_sessions').createIndex({ activityName: 1 }, { background: true });
+      await db.collection('workout_sessions').createIndex({ timestamp: -1 }, { background: true });
+      await db.collection('workout_sessions').createIndex({ createdAt: -1 }, { background: true });
+      console.log('✅ Workout_sessions indexes created');
+    } catch (indexErr) {
+      if (!indexErr.message.includes('already exists')) {
+        console.warn('⚠️ Workout_sessions index warning:', indexErr.message);
+      } else {
+        console.log('✅ Workout_sessions indexes already exist');
+      }
+    }
 
     // ============================================
     // 3. REP_IMAGES COLLECTION
@@ -126,10 +142,18 @@ async function setupDatabase() {
       console.log('✅ Rep_images collection created');
     }
 
-    // Create indexes for rep_images
-    await db.collection('rep_images').createIndex({ sessionId: 1, repNumber: 1 }, { unique: true });
-    await db.collection('rep_images').createIndex({ sessionId: 1 });
-    console.log('✅ Rep_images indexes created (with unique constraint on sessionId + repNumber)');
+    // Create indexes for rep_images (production-safe)
+    try {
+      await db.collection('rep_images').createIndex({ sessionId: 1, repNumber: 1 }, { unique: true, background: true });
+      await db.collection('rep_images').createIndex({ sessionId: 1 }, { background: true });
+      console.log('✅ Rep_images indexes created (with unique constraint on sessionId + repNumber)');
+    } catch (indexErr) {
+      if (!indexErr.message.includes('already exists')) {
+        console.warn('⚠️ Rep_images index warning:', indexErr.message);
+      } else {
+        console.log('✅ Rep_images indexes already exist');
+      }
+    }
 
     // ============================================
     // 4. DISPLAY CURRENT STATS

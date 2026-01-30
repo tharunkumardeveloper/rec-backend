@@ -14,12 +14,29 @@ async function connectDB() {
     db = client.db("talenttrack");
     console.log("✅ Connected to MongoDB Atlas");
     
-    // Create indexes for better query performance
-    await db.collection("workout_sessions").createIndex({ athleteName: 1, timestamp: -1 });
-    await db.collection("rep_images").createIndex({ sessionId: 1 });
-    await db.collection("rep_images").createIndex({ sessionId: 1, repNumber: 1 }, { unique: true });
-    
-    console.log("✅ Database indexes created");
+    // Create indexes for better query performance (production-safe)
+    try {
+      await db.collection("workout_sessions").createIndex(
+        { athleteName: 1, timestamp: -1 },
+        { background: true }
+      );
+      await db.collection("rep_images").createIndex(
+        { sessionId: 1 },
+        { background: true }
+      );
+      await db.collection("rep_images").createIndex(
+        { sessionId: 1, repNumber: 1 },
+        { unique: true, background: true }
+      );
+      console.log("✅ Database indexes created");
+    } catch (indexErr) {
+      // Ignore "already exists" errors
+      if (!indexErr.message.includes('already exists')) {
+        console.warn("⚠️ Index creation warning:", indexErr.message);
+      } else {
+        console.log("✅ Database indexes already exist");
+      }
+    }
   } catch (err) {
     console.error("❌ MongoDB connection error:", err.message);
     console.error("💡 Please update your MongoDB credentials in server/.env");
