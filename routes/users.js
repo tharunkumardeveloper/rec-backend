@@ -262,7 +262,7 @@ router.get("/discover", async (req, res) => {
       ]
     }).toArray();
 
-    const connectedUserIds = connections.map(c => 
+    const connectedUserIds = connections.map(c =>
       c.fromUserId === userId ? c.toUserId : c.fromUserId
     );
 
@@ -324,7 +324,7 @@ router.get("/:userId/stats", async (req, res) => {
     const stats = {
       totalWorkouts: sessions.length,
       bestScore: Math.max(...sessions.map(s => s.totalReps || 0), 0),
-      avgAccuracy: sessions.length > 0 
+      avgAccuracy: sessions.length > 0
         ? Math.round(sessions.reduce((sum, s) => sum + (s.accuracy || 0), 0) / sessions.length)
         : 0,
       formQuality: sessions.length > 0
