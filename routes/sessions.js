@@ -308,6 +308,62 @@ router.get("/all-athletes", async (req, res) => {
   }
 });
 
+// GET /api/sessions/:sessionId - Get a single workout session by ID
+router.get("/:sessionId", async (req, res) => {
+  try {
+    const db = getDB();
+    const { sessionId } = req.params;
+
+    console.log('📊 Fetching workout session:', sessionId);
+
+    // Validate sessionId
+    if (!ObjectId.isValid(sessionId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid session ID'
+      });
+    }
+
+    const workout = await db.collection("workout_sessions")
+      .findOne({ _id: new ObjectId(sessionId) });
+
+    if (!workout) {
+      return res.status(404).json({
+        success: false,
+        error: 'Workout not found'
+      });
+    }
+
+    // Fetch rep images for this workout
+    const reps = await db.collection("rep_images")
+      .find({ sessionId: workout._id.toString() })
+      .sort({ repNumber: 1 })
+      .toArray();
+
+    console.log(`✅ Found workout with ${reps.length} rep images`);
+
+    const workoutWithReps = {
+      ...workout,
+      screenshots: reps.map(rep => rep.imageUrl),
+      repDetails: reps.map(rep => ({
+        rep: rep.repNumber,
+        correct: rep.correct,
+        ...rep.details
+      }))
+    };
+
+    res.status(200).json(workoutWithReps);
+
+  } catch (err) {
+    console.error('❌ Error fetching workout:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching workout',
+      details: err.message
+    });
+  }
+});
+
 // GET /api/sessions/:sessionId/reps - Get rep images for a specific workout session
 router.get("/:sessionId/reps", async (req, res) => {
   try {
