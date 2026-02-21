@@ -268,14 +268,22 @@ router.get("/discover", async (req, res) => {
 
     console.log('🔗 Connected user IDs:', connectedUserIds);
 
-    // Get all users except self and connected users
-    const users = await db.collection('users').find({
-      userId: { $ne: userId, $nin: connectedUserIds }
-    }).limit(50).toArray();
+    // Get ALL users except self and connected users (no limit, no duplicates)
+    const users = await db.collection('users')
+      .find({
+        userId: { $ne: userId, $nin: connectedUserIds }
+      })
+      .sort({ name: 1 })
+      .toArray();
 
-    console.log('✅ Found discoverable users:', users.length);
+    // Remove any potential duplicates by userId
+    const uniqueUsers = Array.from(
+      new Map(users.map(user => [user.userId, user])).values()
+    );
 
-    res.json(users);
+    console.log('✅ Found discoverable users:', uniqueUsers.length);
+
+    res.json(uniqueUsers);
   } catch (error) {
     console.error('❌ Error fetching discover users:', error);
     res.status(500).json({ error: 'Failed to fetch users', details: error.message });
