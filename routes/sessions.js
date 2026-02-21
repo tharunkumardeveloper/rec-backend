@@ -189,8 +189,16 @@ router.get("/user/:userId", async (req, res) => {
 
     console.log('📊 Fetching workouts for userId:', userId);
 
+    // First, get the user to find their name
+    const user = await db.collection("users").findOne({ userId });
+    
+    // Search by both athleteId and athleteName for backward compatibility
+    const query = user 
+      ? { $or: [{ athleteId: userId }, { athleteName: user.name }] }
+      : { athleteId: userId };
+
     const workouts = await db.collection("workout_sessions")
-      .find({ athleteId: userId })
+      .find(query)
       .sort({ timestamp: -1 })
       .toArray();
 
