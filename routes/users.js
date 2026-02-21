@@ -242,4 +242,90 @@ router.get("/athletes", async (req, res) => {
   }
 });
 
+// GET /api/users/discover - Get users to discover (for social features)
+router.get("/discover", async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const db = getDB();
+
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+
+    console.log('🔍 Discovering users for:', userId);
+
+    // Get existing connections
+    const connections = await db.collection('connections').find({
+      $or: [
+        { fromUserId: userId, status: 'accepted' },
+        { toUserId: userId, status: 'accepted' }
+      ]
+    }).toArray();
+
+    const connectedUserIds = connections.map(c => 
+      c.fromUserId === userId ? c.toUserId : c.fromUserId
+    );
+
+    console.log('🔗 Connected user IDs:', connectedUserIds);
+
+    // Get all users except self and connected users
+    const users = await db.collection('users').find({
+      userId: { $ne: userId, $nin: connectedUserIds }
+    }).limit(50).toArray();
+
+    console.log('✅ Found discoverable users:', users.length);
+
+    res.json(users);
+  } catch (error) {
+    console.error('❌ Error fetching discover users:', error);
+    res.status(500).json({ error: 'Failed to fetch users', details: error.message });
+  }
+});
+
+// GET /api/users/:userId/stats - Get user workout stats
+router.get("/:userId/stats", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const db = getDB();
+
+    const sessions = await db.collection('workout_sessions').find({ athleteId: userId }).toArray();
+
+    const stats = {
+      totalWorkouts: sessions.length,
+      bestScore: Math.max(...sessions.map(s => s.totalReps || 0), 0),
+      avgAccuracy: sessions.length > 0 
+        ? Math.round(sessions.reduce((sum, s) => sum + (s.accuracy || 0), 0) / sessions.length)
+        : 0,
+      formQuality: sessions.length > 0
+        ? Math.round(sessions.filter(s => s.formScore === 'Excellent').length / sessions.length * 100)
+        : 0,
+      consistency: sessions.length >= 5 ? 85 : sessions.length * 15
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// POST /api/users/:userId/skills - Update user skills
+router.post("/:userId/skills", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { skills } = req.body;
+    const db = getDB();
+
+    await db.collection('users').updateOne(
+      { userId },
+      { $set: { skills, updatedAt: new Date() } }
+    );
+
+    res.json({ success: true, message: 'Skills updated' });
+  } catch (error) {
+    console.error('Error updating skills:', error);
+    res.status(500).json({ error: 'Failed to update skills' });
+  }
+});
+
 module.exports = router;

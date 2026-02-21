@@ -1,74 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const { ObjectId } = require('mongodb');
+const { getDB } = require('../db');
 
 // Social connections routes - Updated 2026-02-21
-// Handles user discovery, connection requests, and relationship management
-
-// Debug endpoint - Get all users
-router.get('/users/all', async (req, res) => {
-  try {
-    const db = req.app.locals.db;
-    const users = await db.collection('users').find({}).limit(50).toArray();
-    console.log('📊 All users:', users.length);
-    res.json(users);
-  } catch (error) {
-    console.error('Error fetching all users:', error);
-    res.status(500).json({ error: 'Failed to fetch users' });
-  }
-});
-
-// Get users to discover (exclude self and existing connections)
-router.get('/users/discover', async (req, res) => {
-  try {
-    const { userId } = req.query;
-    const db = req.app.locals.db;
-
-    if (!userId) {
-      return res.status(400).json({ error: 'userId is required' });
-    }
-
-    console.log('🔍 Discovering users for:', userId);
-
-    // First, let's see all users in the database
-    const allUsers = await db.collection('users').find({}).toArray();
-    console.log('📊 Total users in database:', allUsers.length);
-    console.log('👥 All user IDs:', allUsers.map(u => u.userId));
-
-    // Get existing connections
-    const connections = await db.collection('connections').find({
-      $or: [
-        { fromUserId: userId, status: 'accepted' },
-        { toUserId: userId, status: 'accepted' }
-      ]
-    }).toArray();
-
-    const connectedUserIds = connections.map(c => 
-      c.fromUserId === userId ? c.toUserId : c.fromUserId
-    );
-
-    console.log('🔗 Connected user IDs:', connectedUserIds);
-
-    // Get all users except self and connected users
-    const users = await db.collection('users').find({
-      userId: { $ne: userId, $nin: connectedUserIds }
-    }).limit(50).toArray();
-
-    console.log('✅ Found discoverable users:', users.length);
-    console.log('📋 Discoverable user names:', users.map(u => u.name));
-
-    res.json(users);
-  } catch (error) {
-    console.error('❌ Error fetching discover users:', error);
-    res.status(500).json({ error: 'Failed to fetch users', details: error.message });
-  }
-});
+// Handles connection requests and relationship management
 
 // Get my connections
-router.get('/connections/:userId', async (req, res) => {
+router.get('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const connections = await db.collection('connections').find({
       $or: [
@@ -94,10 +36,10 @@ router.get('/connections/:userId', async (req, res) => {
 });
 
 // Get pending requests (received)
-router.get('/connections/requests/pending/:userId', async (req, res) => {
+router.get('/requests/pending/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const requests = await db.collection('connections').find({
       toUserId: userId,
@@ -127,10 +69,10 @@ router.get('/connections/requests/pending/:userId', async (req, res) => {
 });
 
 // Get sent requests
-router.get('/connections/requests/sent/:userId', async (req, res) => {
+router.get('/requests/sent/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const requests = await db.collection('connections').find({
       fromUserId: userId,
@@ -158,10 +100,12 @@ router.get('/connections/requests/sent/:userId', async (req, res) => {
 });
 
 // Send connection request
-router.post('/connections/request', async (req, res) => {
+router.post('/request', async (req, res) => {
   try {
     const { fromUserId, toUserId } = req.body;
-    const db = req.app.locals.db;
+    const db = getDB();
+
+    console.log('📤 Connection request:', fromUserId, '->', toUserId);
 
     // Check if request already exists
     const existing = await db.collection('connections').findOne({
@@ -183,6 +127,7 @@ router.post('/connections/request', async (req, res) => {
     };
 
     await db.collection('connections').insertOne(request);
+    console.log('✅ Connection request sent');
     res.json({ success: true, message: 'Connection request sent' });
   } catch (error) {
     console.error('Error sending connection request:', error);
@@ -191,10 +136,10 @@ router.post('/connections/request', async (req, res) => {
 });
 
 // Accept connection request
-router.post('/connections/request/:requestId/accept', async (req, res) => {
+router.post('/request/:requestId/accept', async (req, res) => {
   try {
     const { requestId } = req.params;
-    const db = req.app.locals.db;
+    const db = getDB();
 
     await db.collection('connections').updateOne(
       { _id: new ObjectId(requestId) },
@@ -214,10 +159,10 @@ router.post('/connections/request/:requestId/accept', async (req, res) => {
 });
 
 // Reject connection request
-router.post('/connections/request/:requestId/reject', async (req, res) => {
+router.post('/request/:requestId/reject', async (req, res) => {
   try {
     const { requestId } = req.params;
-    const db = req.app.locals.db;
+    const db = getDB();
 
     await db.collection('connections').updateOne(
       { _id: new ObjectId(requestId) },
@@ -237,10 +182,10 @@ router.post('/connections/request/:requestId/reject', async (req, res) => {
 });
 
 // Check connection status between two users
-router.get('/connections/status/:userId1/:userId2', async (req, res) => {
+router.get('/status/:userId1/:userId2', async (req, res) => {
   try {
     const { userId1, userId2 } = req.params;
-    const db = req.app.locals.db;
+    const db = getDB();
 
     const connection = await db.collection('connections').findOne({
       $or: [
@@ -257,52 +202,6 @@ router.get('/connections/status/:userId1/:userId2', async (req, res) => {
   } catch (error) {
     console.error('Error checking connection status:', error);
     res.status(500).json({ error: 'Failed to check status' });
-  }
-});
-
-// Get user stats
-router.get('/users/:userId/stats', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const db = req.app.locals.db;
-
-    const sessions = await db.collection('workout_sessions').find({ athleteId: userId }).toArray();
-
-    const stats = {
-      totalWorkouts: sessions.length,
-      bestScore: Math.max(...sessions.map(s => s.totalReps || 0), 0),
-      avgAccuracy: sessions.length > 0 
-        ? Math.round(sessions.reduce((sum, s) => sum + (s.accuracy || 0), 0) / sessions.length)
-        : 0,
-      formQuality: sessions.length > 0
-        ? Math.round(sessions.filter(s => s.formScore === 'Excellent').length / sessions.length * 100)
-        : 0,
-      consistency: sessions.length >= 5 ? 85 : sessions.length * 15
-    };
-
-    res.json(stats);
-  } catch (error) {
-    console.error('Error fetching user stats:', error);
-    res.status(500).json({ error: 'Failed to fetch stats' });
-  }
-});
-
-// Update user skills
-router.post('/users/:userId/skills', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const { skills } = req.body;
-    const db = req.app.locals.db;
-
-    await db.collection('users').updateOne(
-      { userId },
-      { $set: { skills, updatedAt: new Date() } }
-    );
-
-    res.json({ success: true, message: 'Skills updated' });
-  } catch (error) {
-    console.error('Error updating skills:', error);
-    res.status(500).json({ error: 'Failed to update skills' });
   }
 });
 
