@@ -191,11 +191,14 @@ router.get("/user/:userId", async (req, res) => {
 
     // First, get the user to find their name
     const user = await db.collection("users").findOne({ userId });
+    console.log('👤 User found:', user ? user.name : 'Not found');
     
     // Search by both athleteId and athleteName for backward compatibility
     const query = user 
       ? { $or: [{ athleteId: userId }, { athleteName: user.name }] }
       : { athleteId: userId };
+
+    console.log('🔍 Query:', JSON.stringify(query));
 
     const workouts = await db.collection("workout_sessions")
       .find(query)
@@ -203,6 +206,15 @@ router.get("/user/:userId", async (req, res) => {
       .toArray();
 
     console.log(`✅ Found ${workouts.length} workouts for user ${userId}`);
+    
+    // If no workouts found, let's check what names exist in workouts
+    if (workouts.length === 0 && user) {
+      const allWorkouts = await db.collection("workout_sessions")
+        .find({})
+        .limit(5)
+        .toArray();
+      console.log('📋 Sample workout names:', allWorkouts.map(w => ({ name: w.athleteName, id: w.athleteId })));
+    }
 
     // Fetch rep images for each workout
     const workoutsWithReps = await Promise.all(
