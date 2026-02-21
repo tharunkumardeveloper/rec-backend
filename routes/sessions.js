@@ -193,9 +193,16 @@ router.get("/user/:userId", async (req, res) => {
     const user = await db.collection("users").findOne({ userId });
     console.log('👤 User found:', user ? user.name : 'Not found');
     
-    // Search by both athleteId and athleteName for backward compatibility
+    // Search by athleteId, exact athleteName match, or partial name match
+    // This handles cases where workout has "Tharun" but user is "Tharun Kumar"
     const query = user 
-      ? { $or: [{ athleteId: userId }, { athleteName: user.name }] }
+      ? { 
+          $or: [
+            { athleteId: userId }, 
+            { athleteName: user.name },
+            { athleteName: { $regex: new RegExp(user.name.split(' ')[0], 'i') } } // Match first name
+          ] 
+        }
       : { athleteId: userId };
 
     console.log('🔍 Query:', JSON.stringify(query));
