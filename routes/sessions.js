@@ -181,6 +181,58 @@ router.get("/athlete/:athleteName", async (req, res) => {
   }
 });
 
+// GET /api/sessions/user/:userId - Get all workouts for a user by userId
+router.get("/user/:userId", async (req, res) => {
+  try {
+    const db = getDB();
+    const { userId } = req.params;
+
+    console.log('📊 Fetching workouts for userId:', userId);
+
+    const workouts = await db.collection("workout_sessions")
+      .find({ athleteId: userId })
+      .sort({ timestamp: -1 })
+      .toArray();
+
+    console.log(`✅ Found ${workouts.length} workouts for user ${userId}`);
+
+    // Fetch rep images for each workout
+    const workoutsWithReps = await Promise.all(
+      workouts.map(async (workout) => {
+        const reps = await db.collection("rep_images")
+          .find({ sessionId: workout._id.toString() })
+          .sort({ repNumber: 1 })
+          .toArray();
+        
+        return {
+          ...workout,
+          screenshots: reps.map(rep => rep.imageUrl),
+          repDetails: reps.map(rep => ({
+            rep: rep.repNumber,
+            correct: rep.correct,
+            ...rep.details
+          }))
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      workouts: workoutsWithReps,
+      count: workoutsWithReps.length
+    });
+
+  } catch (err) {
+    console.error('❌ Error fetching workouts:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching workouts',
+      details: err.message,
+      workouts: [] // Return empty array on error
+    });
+  }
+});
+
 // GET /api/sessions/all-athletes - Get all athletes with workout counts
 router.get("/all-athletes", async (req, res) => {
   try {

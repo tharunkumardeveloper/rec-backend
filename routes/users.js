@@ -282,6 +282,37 @@ router.get("/discover", async (req, res) => {
   }
 });
 
+// GET /api/users/:userId - Get specific user by userId
+router.get("/:userId", async (req, res) => {
+  try {
+    const db = getDB();
+    const { userId } = req.params;
+
+    console.log('📊 Fetching user:', userId);
+
+    const user = await db.collection("users").findOne({ userId });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    console.log('✅ User found:', user.name);
+
+    res.status(200).json(user);
+
+  } catch (err) {
+    console.error('❌ Error fetching user:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Error fetching user',
+      details: err.message
+    });
+  }
+});
+
 // GET /api/users/:userId/stats - Get user workout stats
 router.get("/:userId/stats", async (req, res) => {
   try {
