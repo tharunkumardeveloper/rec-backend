@@ -641,6 +641,7 @@ function createMockLiveResults(activityName, outputDir) {
 const sessionsRouter = require('./routes/sessions');
 const usersRouter = require('./routes/users');
 const authRouter = require('./routes/auth');
+const connectionsRouter = require('./routes/connections');
 const dbUtilsRouter = require('./db-utils');
 
 // Root endpoint
@@ -670,6 +671,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/auth', authRouter);
+app.use('/api/connections', connectionsRouter);
 app.use('/api/db', dbUtilsRouter);
 
 // Legacy endpoint for backward compatibility
